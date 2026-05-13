@@ -1,0 +1,302 @@
+# Default values for RedisEnterprise.
+
+rec:
+  name: ""
+  nodes: 3
+
+  serviceAccount:
+    create: true
+    name: ""
+
+  images:
+    bootstrapper:
+      repository: registry.connect.redhat.com/redislabs/redis-enterprise-operator
+    servicesRigger:
+      repository: registry.connect.redhat.com/redislabs/services-manager
+    redisEnterprise:
+      repository: registry.connect.redhat.com/redislabs/redis-enterprise
+
+  usageMeter:
+    callHomeClient:
+      disabled: true
+
+  ingress:
+    apiFqdnUrl: "api-rec-redis.apps.ocpquademo.quasys.com.tr"
+    dbFqdnSuffix: "-db-rec-redis.apps.ocpquademo.quasys.com.tr"
+    method: openShiftRoute
+    clusterDomain: "ocpquademo.quasys.com.tr"
+
+  resources:
+    limits:
+      cpu: "8"
+      memory: 32Gi
+    requests:
+      cpu: "4"
+      memory: 16Gi
+
+  persistence:
+    enabled: true
+    volumeSize: 100Gi
+
+  # ============================================
+  # Side Containers (Sidecar) Configuration
+  # ============================================
+  sideContainers:
+    enabled: false
+    containers:
+      - name: log-tailer
+        image: "your-registry/log-tailer:1.0"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: LOG_STRATEGY
+            value: "all"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi
+        volumeMounts:
+          - mountPath: /home/logs
+            name: redis-enterprise-storage
+            subPath: logs
+
+clusterCredential:
+  username: ""
+  password: ""
+
+ldap:
+  protocol: LDAPS
+  servers:
+    - host: ""
+      port: 636
+  credential:
+    dn: ""
+    password: ""
+  caCert: ""
+  cacheTTLSeconds: 600
+  enabledForControlPlane: true
+  enabledForDataPlane: true
+  authenticationQuery:
+    base: ""
+    filter: "(sAMAccountName=%u)"
+    scope: WholeSubtree
+  authorizationQuery:
+    base: ""
+    filter: "(member=%D)"
+    scope: WholeSubtree
+
+license:
+  key: ""
+
+tls:
+  certificates:
+    api:
+      enabled: true
+      secretName: api-certificate
+      certificate: ""
+      key: ""
+    cm:
+      enabled: true
+      secretName: cm-certificate
+      certificate: ""
+      key: ""
+    proxy:
+      enabled: true
+      secretName: proxy-certificate
+      certificate: ""
+      key: ""
+    syncer:
+      enabled: false
+      secretName: syncer-certificate
+      certificate: ""
+      key: ""
+    metricsExporter:
+      enabled: false
+      secretName: metrics-exporter-certificate
+      certificate: ""
+      key: ""
+
+
+redb:
+  databases:
+    example-db:
+      enabled: true
+      # Custom labels for the database
+
+      # ============================================
+      # Database Identity & Access
+      # ============================================
+      type: redis                        # redis | memcached
+      defaultUser: false                 # When disabled, DatabaseSecret is not created/updated
+      databaseSecretName: "redb-example-db"             # Secret name for database credentials redb-<dbname>
+      # databasePort: 12345              # Cannot be changed after creation!
+      # databaseServicePort: 12345       # Can be modified after creation
+      # memcachedSaslSecretName: ""      # Only for type=memcached
+
+      # ============================================
+      # Database Sizing
+      # ============================================
+      memorySize: "1GB"
+      shardCount: 2
+      shardsPlacement: dense             # dense | sparse
+
+      # ============================================
+      # High Availability & Replication
+      # ============================================
+      replication: true
+      # rackAware: false
+
+      # ============================================
+      # Clustering & Proxy
+      # Dependency: proxyPolicy default changes based on ossCluster value
+      #   - ossCluster=false -> default: "single"
+      #   - ossCluster=true  -> default: "all-master-shards"
+      # ============================================
+      # ossCluster: false
+      # proxyPolicy: single              # single | all-master-shards | all-nodes
+
+      # ============================================
+      # Data Policy
+      # ============================================
+      evictionPolicy: volatile-lru       # noeviction, allkeys-lru, allkeys-lfu, allkeys-random,
+                                         # volatile-lru, volatile-lfu, volatile-random, volatile-ttl
+      persistence: aofEverySecond              # disabled, aofEverySecond, aofAlways,
+                                         # snapshotEvery1Hour, snapshotEvery6Hour, snapshotEvery12Hour
+
+      # ============================================
+      # Security & Encryption
+      # ============================================
+      tlsMode: replica_ssl                  # disabled | enabled | replica_ssl
+      # dataInternodeEncryption: false
+      # Dependency: clientAuthenticationCertificates requires tlsMode=enabled
+      # clientAuthenticationCertificates:
+      #   - my-client-cert-secret
+      # resp3: false                     # RESP3 protocol support
+
+      # ============================================
+      # Auto Tiering (Redis on Flash)
+      # Dependencies:
+      #   - rofRamSize and rofRamRatio require isRof=true
+      #   - rofRamSize must be at least 10% of memorySize
+      #   - rofRamRatio requires Redis >= 8.0
+      # ============================================
+      # isRof: false
+      # rofRamSize: "500MB"              # Dependent: isRof=true
+      # rofRamRatio: 20                  # Dependent: isRof=true AND Redis >= 8.0
+
+      # ============================================
+      # Redis Modules
+      # NOTE: For Redis 8.0+, bundled modules are automatically enabled.
+      # Dependency: version requires upgradeSpec.upgradeModulesToLatest=false
+      # ============================================
+      # modulesList:
+      #   - name: search
+      #     # version: "2.6.9"
+      #   - name: ReJSON
+      #   - name: timeseries
+      #   - name: bf
+
+      # ============================================
+      # Role-Based Access Control
+      # ============================================
+      # rolesPermissions:
+      #   - type: redis-enterprise
+      #     acl: acltest
+      #     role: roletest
+
+      # ============================================
+      # Monitoring & Alerts
+      # ============================================
+      # alertSettings:
+      #   bdb_size:
+      #     enabled: true
+      #     threshold: ""
+      #   bdb_high_latency:
+      #     enabled: true
+      #     threshold: ""
+      #   bdb_ram_values:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_crdt_src_syncer_connection_error:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_backup_delayed:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_high_throughput:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_proxy_cert_expiring_soon:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_low_throughput:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_crdt_src_syncer_general_error:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_replica_src_high_syncer_lag:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_long_running_action:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_ram_dataset_overhead:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_shard_num_ram_values:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_crdt_src_high_syncer_lag:
+      #     enabled: true
+      #     threshold: ''
+      #   bdb_replica_src_syncer_connection_error:
+      #     enabled: true
+      #     threshold: ''
+      # ============================================
+      # Backup Configuration
+      # NOTE: Backup targets are mutually exclusive (s3, gcs, abs, ftp, sftp, swift, mount)
+      # ============================================
+      # backup:
+      #   interval: 86400                # Daily backup in seconds
+      #   # Choose ONE of the following backup targets:
+      #   # mount:
+      #   #   path: /tmp/redis-backups
+      #   # s3:
+      #   #   awsSecretName: test
+      #   #   bucketName: test
+      #   #   subdir: test
+
+      # ============================================
+      # Active-Active (CRDT)
+      # ============================================
+      # activeActive:
+      #   name: my-aadb
+      #   participatingClusterName: cluster1
+
+      # ============================================
+      # Upgrade Spec
+      # ============================================
+      # upgradeSpec:
+      #   upgradeModulesToLatest: true
+
+rerc:
+  clusters:
+    ocpquademo:
+      enabled: true
+      username: "admin@quasys.com.tr"
+      password: 'Shield2617!'
+      recName: "rec-quademo"
+      recNamespace: "redis"
+      apiFqdnUrl: "api-rec-quademo-redis.apps.ocpquademo.quasys.com.tr"
+      dbFqdnSuffix: "-db-rec-quademo-redis.apps.ocpquademo.quasys.com.tr"
+    ocpquatest:
+      enabled: true
+      username: "admin@quasys.com.tr"
+      password: 'Shield2617!'
+      recName: "rec-quatest"
+      recNamespace: "redis"
+      apiFqdnUrl: "api-rec-quatest-redis.apps.ocpquatest.quasys.com.tr"
+      dbFqdnSuffix: "-db-rec-quatest-redis.apps.ocpquatest.quasys.com.tr"

@@ -1,0 +1,88 @@
+# Default values for RedisEnterprise.
+
+rec:
+  name: "rec-ent-dc1"
+  nodes: 3
+  licenseName: "rec-license"
+  serviceAccount:
+    create: true
+    name: "rec-ent-dc1-sa"
+  
+  
+  sideContainers:
+    enabled: true
+    containers:
+      - name: log-tailer
+        image: "quay.io/abdulmelik-kalkan/redis-log-tailer:4.0.1"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: LOG_STRATEGY
+            value: "specific"
+          - name: TARGET_FILENAMES
+            value: "event_log.log"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi
+        volumeMounts:
+          - mountPath: /home/logs
+            name: redis-enterprise-storage
+            subPath: logs
+
+
+  ingress:
+    apiFqdnUrl: "api-rec-ent-dc1-redis-ent-dc1.apps.ocp-qua-prod.quasys.com.tr"
+    dbFqdnSuffix: "-db-rec-ent-dc1-redis-ent-dc1.apps.ocp-qua-prod.quasys.com.tr"
+    method: openShiftRoute
+    clusterDomain: "ocp-qua-prod.quasys.com.tr"
+
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "2"
+      memory: 4Gi
+
+  persistence:
+    enabled: true
+    volumeSize: 50Gi
+    storageClassName: "ocs-storagecluster-ceph-rbd"
+
+ldap:
+  protocol: LDAPS
+  servers:
+    - host: "192.168.2.13"
+      port: 636
+  cacheTTLSeconds: 600
+  enabledForControlPlane: true
+  enabledForDataPlane: true
+  authenticationQuery:
+    base: "DC=quasys,DC=com,DC=tr"
+    filter: "(sAMAccountName=%u)"
+    scope: WholeSubtree
+  authorizationQuery:
+    base: "DC=quasys,DC=com,DC=tr"
+    filter: "(member=%D)"
+    scope: WholeSubtree
+  bindCredentialsSecretName: "ldap-bind-credentials"
+  caCertificateSecretName: "ldap-ca-cert"
+
+clusterCredential:
+  username: "admin@quasys.com.tr"
+
+
+tls:
+  certificates:
+    api:
+      enabled: true
+      secretName: api-certificate
+    cm:
+      enabled: true
+      secretName: cm-certificate
+    proxy:
+      enabled: true
+      secretName: proxy-certificate

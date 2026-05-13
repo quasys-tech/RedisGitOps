@@ -1,0 +1,208 @@
+apiVersion: app.redislabs.com/v1
+kind: RedisEnterpriseCluster
+metadata:
+  name: {{ .Values.rec.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "RedisEnterprise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+spec:
+  # Cluster size - minimum 3 nodes for HA (use odd numbers)
+  nodes: {{ .Values.rec.nodes }}
+
+  # License Secret Reference
+  licenseSecretName: {{ .Values.rec.licenseName }}
+
+  clusterCredentialSecretName: {{ .Values.rec.name }}
+
+  # ============================================
+  # Service Account Configuration
+  # ============================================
+  createServiceAccount: {{ .Values.rec.serviceAccount.create }}
+  serviceAccountName: {{ .Values.rec.serviceAccount.name }}
+
+  # Admin username (optional - auto-generated if not specified)
+  username: {{ .Values.clusterCredential.username | quote }}
+
+  {{- if .Values.rec.sideContainers.enabled }}
+  sideContainersSpec:
+    {{- range .Values.rec.sideContainers.containers }}
+    - name: {{ .name }}
+      image: {{ .image | quote }}
+      imagePullPolicy: {{ .imagePullPolicy | default "IfNotPresent" }}
+      {{- if .env }}
+      env:
+        {{- toYaml .env | nindent 8 }}
+      {{- end }}
+      {{- if .resources }}
+      resources:
+        {{- toYaml .resources | nindent 8 }}
+      {{- end }}
+      {{- if .volumeMounts }}
+      volumeMounts:
+        {{- toYaml .volumeMounts | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+
+
+  # ============================================
+  # Image Specifications (Red Hat Certified Registry)
+  # ============================================
+  bootstrapperImageSpec:
+    repository: {{ .Values.rec.images.bootstrapper.repository }}
+  redisEnterpriseServicesRiggerImageSpec:
+    repository: {{ .Values.rec.images.servicesRigger.repository }}
+  redisEnterpriseImageSpec:
+    repository: {{ .Values.rec.images.redisEnterprise.repository }}
+
+  # Usage Meter / Call Home Client
+  usageMeter:
+    callHomeClient:
+      disabled: {{ .Values.rec.usageMeter.callHomeClient.disabled }}
+
+  # ============================================
+  # Ingress / Route Configuration (OpenShift)
+  # ============================================
+  ingressOrRouteSpec:
+    apiFqdnUrl: {{ .Values.rec.ingress.apiFqdnUrl | quote }}
+    dbFqdnSuffix: {{ .Values.rec.ingress.dbFqdnSuffix | quote }}
+    method: {{ .Values.rec.ingress.method }}
+
+  # ============================================
+  # Resource Configuration (Production - Higher specs)
+  # ============================================
+  redisEnterpriseNodeResources:
+    limits:
+      cpu: {{ .Values.rec.resources.limits.cpu | quote }}
+      memory: {{ .Values.rec.resources.limits.memory }}
+    requests:
+      cpu: {{ .Values.rec.resources.requests.cpu | quote }}
+      memory: {{ .Values.rec.resources.requests.memory }}
+
+  # ============================================
+  # Persistent Storage
+  # ============================================
+  persistentSpec:
+    enabled: {{ .Values.rec.persistence.enabled }}
+    volumeSize: {{ .Values.rec.persistence.volumeSize }}
+    storageClassName: {{ .Values.rec.persistence.storageClassName }}
+
+  # ============================================
+  # LDAP Configuration
+  # ============================================
+  ldap:
+    # Protocol: LDAP (389), LDAPS (636), or STARTTLS
+    protocol: {{ .Values.ldap.protocol }}
+
+    # LDAP Server(s) - Multiple for HA
+    servers:
+      {{- toYaml .Values.ldap.servers | nindent 6 }}
+
+    # Bind Credentials Secret
+    bindCredentialsSecretName: {{ .Values.ldap.bindCredentialsSecretName }}
+
+    # CA Certificate for LDAPS
+    caCertificateSecretName: {{ .Values.ldap.caCertificateSecretName }}
+
+    # Cache settings
+    cacheTTLSeconds: {{ .Values.ldap.cacheTTLSeconds }}
+
+    # Enable LDAP for Control Plane (Admin UI, API)
+    enabledForControlPlane: {{ .Values.ldap.enabledForControlPlane }}
+
+    # Enable LDAP for Data Plane (Redis ACL)
+    enabledForDataPlane: {{ .Values.ldap.enabledForDataPlane }}
+
+    # Authentication Query
+    authenticationQuery:
+      query:
+        base: {{ .Values.ldap.authenticationQuery.base | quote }}
+        filter: {{ .Values.ldap.authenticationQuery.filter }}
+        scope: {{ .Values.ldap.authenticationQuery.scope }}
+
+    # Authorization Query
+    authorizationQuery:
+      query:
+        base: {{ .Values.ldap.authorizationQuery.base | quote }}
+        filter: {{ .Values.ldap.authorizationQuery.filter }}
+        scope: {{ .Values.ldap.authorizationQuery.scope }}
+
+  # ============================================
+  # TLS Certificates
+  # ============================================
+  certificates:
+    {{- if .Values.tls.certificates.api.enabled }}
+    # API endpoint certificate
+    apiCertificateSecretName: {{ .Values.tls.certificates.api.secretName }}
+    {{- end }}
+    {{- if .Values.tls.certificates.cm.enabled }}
+    # Cluster Manager UI certificate
+    cmCertificateSecretName: {{ .Values.tls.certificates.cm.secretName }}
+    {{- end }}
+    {{- if .Values.tls.certificates.proxy.enabled }}
+    # Database proxy certificate
+    proxyCertificateSecretName: {{ .Values.tls.certificates.proxy.secretName }}
+    {{- end }}
+    {{- if .Values.tls.certificates.syncer.enabled }}
+    # Active-Active syncer certificate
+    syncerCertificateSecretName: {{ .Values.tls.certificates.syncer.secretName }}
+    {{- end }}
+    {{- if .Values.tls.certificates.metricsExporter.enabled }}
+    # Metrics exporter certificate
+    metricsExporterCertificateSecretName: {{ .Values.tls.certificates.metricsExporter.secretName }}
+    {{- end }}
+
+  # ============================================
+  # Security Settings
+  # ============================================
+  # Enable encryption between cluster nodes
+  # dataInternodeEncryption: true
+
+  # ============================================
+  # Pod Scheduling (Production - Strict requirements)
+  # ============================================
+  # Anti-affinity to spread pods across nodes - REQUIRED
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: redis-enterprise
+            redis.io/role: node
+            redis.io/cluster: {{ .Values.rec.name }}
+        topologyKey: kubernetes.io/hostname
+
+  {{- if .Values.podStartingPolicy.enabled }}
+  podStartingPolicy:
+    enabled: true
+    startingThresholdSeconds: {{ .Values.podStartingPolicy.startingThresholdSeconds }}
+  {{- end }}
+
+
+  # Rack awareness for zone distribution
+  # rackAwarenessNodeLabel: topology.kubernetes.io/zone
+
+  # Node selector for dedicated nodes (optional)
+  # nodeSelector:
+  #   node-role.kubernetes.io/redis: "true"
+
+  # Tolerations for dedicated nodes (optional)
+  # podTolerations:
+  #   - key: "dedicated"
+  #     operator: "Equal"
+  #     value: "redis"
+  #     effect: "NoSchedule"
+
+  # ============================================
+  # Services Configuration
+  # ============================================
+  # servicesRiggerSpec:
+  #   databaseServiceType: ClusterIP
+  #   servicesAnnotations:
+  #     prometheus.io/scrape: "true"
+  #     prometheus.io/port: "8070"
+
+  # ============================================
+  # UI Access
+  # ============================================
+  # uiServiceType: ClusterIP
