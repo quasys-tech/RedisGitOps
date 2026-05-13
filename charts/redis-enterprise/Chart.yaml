@@ -23,7 +23,7 @@ version: 1.0.0
 # It is recommended to use it with quotes.
 appVersion: "1.16.0"
 
-dependencies:
-  - name: redis-enterprise-operator-cert
-    version: "8.0.10-23.0" # O anki güncel versiyon
-    repository: "https://redis.io/docs/latest/operate/kubernetes/deployment/openshift/"
+# dependencies:
+#   - name: redis-enterprise-operator-cert
+#     version: "8.0.10-23.0" # O anki güncel versiyon
+#     repository: "https://redis.io/docs/latest/operate/kubernetes/deployment/openshift/"
