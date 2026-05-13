@@ -1,0 +1,18 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.rec.name }}-ui
+  namespace: {{ .Release.Namespace }}
+spec:
+  to:
+    name: {{ .Values.rec.name }}-ui
+    weight: 100
+    kind: Service
+  host: ''
+  path: ''
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: passthrough
+  port:
+    targetPort: ui
+  alternateBackends: []
