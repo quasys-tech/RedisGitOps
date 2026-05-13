@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: redis-enterprise-ocp-prod
-  namespace: redis-ent-dc1
+  namespace: openshift-gitops
 spec:
   destination:
     server: 'https://kubernetes.default.svc'

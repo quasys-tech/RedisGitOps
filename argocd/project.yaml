@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: redis-enterprise-project
-  namespace: redis-ent-dc1
+  namespace: openshift-gitops
 spec:
   description: 'Redis Enterprise Multi-Cluster Project'
   sourceRepos:

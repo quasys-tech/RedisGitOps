@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: redis-enterprise-multicluster
-  namespace: redis-ent-dc1
+  namespace: openshift-gitops
 spec:
   generators:
     - list:
