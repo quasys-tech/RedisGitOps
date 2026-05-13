@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: redis-enterprise-ocp-prod
+  namespace: redis-ent-dc1
+spec:
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: redis-ent-dc1
+  project: redis-enterprise-project
+  source:
+    path: 'charts/redis-enterprise'
+    repoURL: 'https://github.com/quasys-tech/RedisGitOps.git'
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

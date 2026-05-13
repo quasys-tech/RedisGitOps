@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: redis-enterprise-project
+  namespace: redis-ent-dc1
+spec:
+  description: 'Redis Enterprise Multi-Cluster Project'
+  sourceRepos:
+    - 'https://github.com/quasys-tech/RedisGitOps.git'
+  destinations:
+    - namespace: 'redis-ent-dc1'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

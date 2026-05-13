@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: redis-enterprise-multicluster
+  namespace: redis-ent-dc1
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: ocp-qua-prod
+            name: redis-enterprise
+            namespace: redis-ent-dc1
+            url: 'https://api.ocp-qua-prod.quasys.com.tr:6443'
+            values_file: values-prod.yaml
+  template:
+    metadata:
+      name: '{{cluster}}-redis'
+    spec:
+      destination:
+        namespace: '{{namespace}}'
+        server: '{{url}}'
+      project: redis-enterprise-project
+      source:
+        helm:
+          valueFiles:
+            - '{{values_file}}'
+        path: charts/redis-enterprise
+        repoURL: 'https://github.com/quasys-tech/RedisGitOps.git'
+        targetRevision: HEAD
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
